@@ -1,7 +1,7 @@
 🚀 Lovable Project
 📌 Project Info
 
-Live URL: View Project
+Live URL: [View Project](https://preview--aware-phish-shield.lovable.app/)
 
 ✨ About the Project
 
