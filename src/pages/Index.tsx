@@ -12,8 +12,20 @@ import {
   CheckCircle,
   ArrowRight,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -167,12 +179,16 @@ const Index = () => {
               Join thousands of security professionals using PhishEye to defend against phishing attacks.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="gradient-primary glow-primary">
-                Start Free Trial
-                <ArrowRight className="w-5 h-5 ml-2" />
+              <Button size="lg" className="gradient-primary glow-primary" asChild>
+                <a href="/login">
+                  Get Started
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </a>
               </Button>
-              <Button size="lg" variant="outline">
-                Schedule Demo
+              <Button size="lg" variant="outline" asChild>
+                <a href="/login">
+                  Try Demo
+                </a>
               </Button>
             </div>
             <div className="flex items-center justify-center mt-8 space-x-8 text-sm text-muted-foreground">

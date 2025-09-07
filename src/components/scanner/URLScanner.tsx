@@ -12,6 +12,9 @@ import {
   Clock,
   Info,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface ScanResult {
   url: string;
@@ -31,39 +34,124 @@ const URLScanner = () => {
   const [url, setUrl] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const analyzeURL = (url: string) => {
+    // Simple URL analysis for demo purposes
+    const suspiciousPatterns = [
+      'bit.ly', 'tinyurl.com', 'shortened', 'phishing', 'fake', 'scam',
+      'bank-security', 'verify-account', 'urgent-action', 'suspended'
+    ];
+    
+    const domain = new URL(url).hostname.toLowerCase();
+    const fullUrl = url.toLowerCase();
+    
+    let riskScore = 0;
+    let reasons = [];
+    
+    // Check for suspicious patterns
+    suspiciousPatterns.forEach(pattern => {
+      if (fullUrl.includes(pattern)) {
+        riskScore += 25;
+        reasons.push(`Suspicious pattern detected: ${pattern}`);
+      }
+    });
+    
+    // Check for non-HTTPS
+    if (!url.startsWith('https://')) {
+      riskScore += 20;
+      reasons.push('Not using secure HTTPS protocol');
+    }
+    
+    // Check for suspicious TLD
+    const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf'];
+    if (suspiciousTlds.some(tld => domain.endsWith(tld))) {
+      riskScore += 30;
+      reasons.push('Suspicious top-level domain');
+    }
+    
+    // Add positive indicators for safe sites
+    if (riskScore === 0) {
+      reasons.push('Valid SSL certificate', 'Established domain', 'Good reputation');
+    }
+    
+    // Random factor for demo
+    riskScore += Math.floor(Math.random() * 20);
+    riskScore = Math.min(riskScore, 100);
+    
+    let status: "safe" | "warning" | "danger" = 'safe';
+    if (riskScore > 70) status = 'danger';
+    else if (riskScore > 40) status = 'warning';
+    
+    return { riskScore, status, reasons };
+  };
 
   const handleScan = async () => {
-    if (!url) return;
-
-    setIsScanning(true);
+    if (!url || !user) return;
     
-    // Simulate API call
-    setTimeout(() => {
-      // Mock result based on URL content
-      const isDangerous = url.toLowerCase().includes('phish') || url.toLowerCase().includes('scam');
-      const isSuspicious = url.toLowerCase().includes('suspicious') || url.toLowerCase().includes('temp');
+    try {
+      setIsScanning(true);
+      setScanResult(null);
+      
+      // Validate URL
+      const urlObj = new URL(url);
+      
+      // Simulate scanning delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Analyze URL
+      const analysis = analyzeURL(url);
       
       const result: ScanResult = {
         url,
-        riskScore: isDangerous ? 85 : isSuspicious ? 65 : 15,
-        status: isDangerous ? "danger" : isSuspicious ? "warning" : "safe",
-        reasons: isDangerous 
-          ? ["Suspicious domain patterns", "No HTTPS encryption", "Recent domain registration"]
-          : isSuspicious
-          ? ["New domain registration", "Limited online presence"]
-          : ["Established domain", "Valid SSL certificate", "Good reputation"],
+        riskScore: analysis.riskScore,
+        status: analysis.status,
+        reasons: analysis.reasons,
         scanTime: new Date().toLocaleTimeString(),
         details: {
-          domainAge: isDangerous ? "2 days" : isSuspicious ? "15 days" : "3 years",
-          sslStatus: isDangerous ? "Invalid" : "Valid",
-          reputation: isDangerous ? "Poor" : isSuspicious ? "Unknown" : "Excellent",
-          contentAnalysis: isDangerous ? "Suspicious patterns detected" : "Clean content"
+          domainAge: analysis.riskScore > 70 ? "2 days" : analysis.riskScore > 40 ? "15 days" : "3 years",
+          sslStatus: url.startsWith('https://') ? 'Valid' : 'Invalid',
+          reputation: analysis.status === 'danger' ? 'Poor' : analysis.status === 'warning' ? 'Unknown' : 'Excellent',
+          contentAnalysis: analysis.riskScore > 50 ? 'Suspicious patterns detected' : 'Clean content'
         }
       };
-
+      
+      // Save to database
+      const { error } = await supabase
+        .from('url_scans')
+        .insert({
+          user_id: user.id,
+          url: url,
+          risk_score: analysis.riskScore,
+          status: analysis.status === 'danger' ? 'malicious' : analysis.status === 'warning' ? 'suspicious' : 'safe',
+          analysis_details: result.details
+        });
+      
+      if (error) {
+        console.error('Error saving scan:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save scan results",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Scan Complete",
+          description: `URL analyzed with ${analysis.riskScore}% risk score`,
+        });
+      }
+      
       setScanResult(result);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid URL",
+        variant: "destructive"
+      });
+    } finally {
       setIsScanning(false);
-    }, 2000);
+    }
   };
 
   const getStatusIcon = (status: string) => {

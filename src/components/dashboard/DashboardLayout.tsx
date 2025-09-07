@@ -12,6 +12,8 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,6 +22,13 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children, currentPage }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -85,7 +94,10 @@ const DashboardLayout = ({ children, currentPage }: DashboardLayoutProps) => {
         </nav>
 
         <div className="p-4 border-t border-border">
-          <Button variant="outline" className="w-full justify-start">
+          <div className="mb-3 text-sm text-muted-foreground">
+            Signed in as {user?.user_metadata?.display_name || user?.email}
+          </div>
+          <Button variant="outline" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="w-5 h-5 mr-3" />
             Sign Out
           </Button>

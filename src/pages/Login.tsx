@@ -1,26 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Shield, Eye, Mail, Lock, Chrome } from "lucide-react";
+import { Shield, Eye, Mail, Lock, Chrome, UserPlus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      // Redirect to dashboard
-      window.location.href = "/dashboard";
-    }, 1500);
+    if (isSignUp) {
+      await signUp(email, password, displayName);
+    } else {
+      const { error } = await signIn(email, password);
+      if (!error) {
+        navigate('/dashboard');
+      }
+    }
   };
 
   return (
@@ -48,9 +60,9 @@ const Login = () => {
 
         <Card className="glass-card">
           <CardHeader className="text-center">
-            <CardTitle>Welcome Back</CardTitle>
+            <CardTitle>{isSignUp ? 'Create Account' : 'Welcome Back'}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Sign in to your PhishEye account
+              {isSignUp ? 'Join PhishEye to protect your digital world' : 'Sign in to your PhishEye account'}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -73,6 +85,24 @@ const Login = () => {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Full Name</Label>
+                  <div className="relative">
+                    <UserPlus className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="displayName"
+                      type="text"
+                      placeholder="Enter your full name"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="pl-10"
+                      required={isSignUp}
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -96,39 +126,47 @@ const Login = () => {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
+                    minLength={isSignUp ? 6 : undefined}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm text-muted-foreground">Remember me</span>
-                </label>
-                <Button variant="link" className="p-0 h-auto text-sm">
-                  Forgot password?
-                </Button>
-              </div>
+              {!isSignUp && (
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center">
+                    <input type="checkbox" className="mr-2" />
+                    <span className="text-sm text-muted-foreground">Remember me</span>
+                  </label>
+                  <Button variant="link" className="p-0 h-auto text-sm">
+                    Forgot password?
+                  </Button>
+                </div>
+              )}
 
               <Button 
                 type="submit" 
                 className="w-full gradient-primary glow-primary" 
                 size="lg"
-                disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isSignUp ? "Create Account" : "Sign In"}
               </Button>
             </form>
 
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
-              <Button variant="link" className="p-0 h-auto" asChild>
-                <a href="/signup">Sign up</a>
+              <span className="text-muted-foreground">
+                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+              </span>
+              <Button 
+                variant="link" 
+                className="p-0 h-auto" 
+                onClick={() => setIsSignUp(!isSignUp)}
+              >
+                {isSignUp ? 'Sign in' : 'Sign up'}
               </Button>
             </div>
           </CardContent>
